@@ -2,7 +2,7 @@
 #define __BLUFI_DEMO_H__
 
 
-#define BLUFI_DEMO_TAG "BLUFI_DEMO"
+#define BLUFI_DEMO_TAG "PINGZEE"
 #define BLUFI_INFO(fmt, ...)   ESP_LOGI(BLUFI_DEMO_TAG, fmt, ##__VA_ARGS__) 
 #define BLUFI_ERROR(fmt, ...)  ESP_LOGE(BLUFI_DEMO_TAG, fmt, ##__VA_ARGS__) 
 
