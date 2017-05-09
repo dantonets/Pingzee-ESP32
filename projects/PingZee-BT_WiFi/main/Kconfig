@@ -1,0 +1,6 @@
+menu "PingZee BTWiFi Config"
+
+config USE_SERIAL_CONSOLE
+    bool "Use FreeRTOS CLI with serial console"
+
+endmenu

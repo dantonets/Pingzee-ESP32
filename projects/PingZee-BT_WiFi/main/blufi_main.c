@@ -312,6 +312,12 @@ void app_main()
 {
     esp_err_t ret;
 
+#ifdef CONFIG_USE_SERIAL_CONSOLE
+	void uart_console_task(void);
+
+	uart_console_task();
+#endif
+
     nvs_flash_init();
     initialise_wifi();
 
