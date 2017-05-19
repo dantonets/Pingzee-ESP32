@@ -31,6 +31,8 @@
 #include "esp_bt_main.h"
 #include "esp_bt_device.h"
 #include "blufi_demo.h"
+#include "app.h"
+
 
 static void blufi_event_callback(esp_blufi_cb_event_t event, esp_blufi_cb_param_t *param);
 
@@ -317,6 +319,12 @@ void app_main()
 
 	uart_console_task();
 #endif
+	vI2C0MasterStart( 2048, 12);
+	vSPIMasterStart( 2048, 12);
+#ifdef CONFIG_SSD1306_OLED
+	vOledStart( 2048, 12);
+#endif // CONFIG_SSD1306_OLED
+	
 
     nvs_flash_init();
     initialise_wifi();
