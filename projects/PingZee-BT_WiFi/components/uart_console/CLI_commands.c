@@ -31,6 +31,11 @@ static portBASE_TYPE esp32_i2c_command(int8_t *pcWriteBuffer, 	size_t xWriteBuff
 #ifdef CONFIG_SSD1306_OLED
 static portBASE_TYPE oled_output_command(int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString);
 #endif // CONFIG_SSD1306_OLED
+#ifdef CONFIG_LIS3DH
+static portBASE_TYPE lis3dh_command(int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString);
+#endif // CONFIG_LIS3DH
+
+static const int8_t *failure_message = (int8_t *) "*** ERROR: Uncorrect parameter\r\n";
 
 
 static const CLI_Command_Definition_t esp32_resurces_command_definition =
@@ -58,6 +63,16 @@ static const CLI_Command_Definition_t oled_output_command_definition =
 	3 /* Three parameters are expected. */
 };
 #endif // CONFIG_SSD1306_OLED
+#ifdef CONFIG_LIS3DH
+static const CLI_Command_Definition_t lis3dh_command_definition =
+{
+	(const int8_t *const) "lis3dh", /* The command string to type. */
+	(const int8_t *const) "lis3dh\t{init |poll} LIS3DH accelerometer\r\n",
+	lis3dh_command, /* The function to run. */
+	1 /* One parameter are expected. */
+};
+#endif // CONFIG_LIS3DH
+
 
 /*-----------------------------------------------------------*/
 
@@ -69,6 +84,9 @@ void vRegisterCLICommands(void)
 #ifdef CONFIG_SSD1306_OLED
 	FreeRTOS_CLIRegisterCommand(&oled_output_command_definition);
 #endif // CONFIG_SSD1306_OLED	
+#ifdef CONFIG_LIS3DH
+	FreeRTOS_CLIRegisterCommand(&lis3dh_command_definition);
+#endif // CONFIG_LIS3DH
 }
 
 static portBASE_TYPE esp32_resurces_command(int8_t *pcWriteBuffer, 	size_t xWriteBufferLen, const int8_t *pcCommandString)
@@ -195,7 +213,7 @@ static portBASE_TYPE oled_output_command(int8_t *pcWriteBuffer,
 
 	int8_t *parameter1_string, *parameter2_string, *parameter3_string;
 	portBASE_TYPE parameter_string_length;
-	static const int8_t *failure_message = (int8_t *) "*** ERROR: Uncorrect parameter\r\n";
+//	static const int8_t *failure_message = (int8_t *) "*** ERROR: Uncorrect parameter\r\n";
 	uint8_t page, column; 
 	OledMessage_t msg;
 
@@ -276,4 +294,85 @@ finish:
 /*-----------------------------------------------------------*/
 
 #endif // CONFIG_SSD1306_OLED
+#ifdef CONFIG_LIS3DH
+static portBASE_TYPE lis3dh_command(int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString)
+{
+	int8_t *parameter1_string;
+	portBASE_TYPE parameter_string_length;
+	Lis3dhMessage_t msg;
+
+	/* Remove compile time warnings about unused parameters, and check the
+	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	write buffer length is adequate, so does not check for buffer overflows. */
+	(void) xWriteBufferLen;
+	configASSERT(pcWriteBuffer);
+
+	/* Obtain the parameter string. */
+	parameter1_string = (int8_t *) FreeRTOS_CLIGetParameter(
+									pcCommandString,		/* The command string itself. */
+									1,						/* Return the first parameter. */
+									&parameter_string_length	/* Store the parameter string length. */
+								);
+	*pcWriteBuffer = '\0';
+
+	if (!strncmp((const char *)parameter1_string, "init", 4) )
+	{
+		msg.app_msg.cmd = APPMSG_LIS3DH_CHECK_PRESENT;
+		msg.lis3dh__doneCallback = Lis3dhOnDone;
+		Lis3dhMsgPut(&msg);
+		while(Lis3dhMsgGet(&msg) != pdFAIL) {
+			break;
+		}				
+		if (msg.app_msg.d.param[0] != 0x00) {
+
+			msg.app_msg.cmd = APPMSG_LIS3DH_SETUP;
+			msg.app_msg.d.ptr = NULL;   // Setup default
+			msg.lis3dh__doneCallback = Lis3dhOnDone;
+			Lis3dhMsgPut(&msg);
+			while(Lis3dhMsgGet(&msg) != pdFAIL) {
+				break;
+			}				
+		}else{
+			strcpy((char * restrict)pcWriteBuffer, "No LIS3DH find. Abort\r\n");
+		}
+	}else
+	if (!strncmp((const char *)parameter1_string, "poll", 4) )
+	{
+		while(1) {
+
+			msg.app_msg.cmd = APPMSG_NOP;
+			msg.lis3dh__doneCallback = Lis3dhOnDone;
+			Lis3dhMsgPut(&msg);
+			while(Lis3dhMsgGet(&msg) != pdFAIL) {
+				break;
+			}				
+			printf("X=%f, ", msg.accl);			
+
+			msg.app_msg.cmd = APPMSG_NOP;
+			msg.lis3dh__doneCallback = Lis3dhOnDone;
+			Lis3dhMsgPut(&msg);
+			while(Lis3dhMsgGet(&msg) != pdFAIL) {
+				break;
+			}				
+			printf("Y=%f, ", msg.accl);			
+			msg.app_msg.cmd = APPMSG_NOP;
+			msg.lis3dh__doneCallback = Lis3dhOnDone;
+			Lis3dhMsgPut(&msg);
+			while(Lis3dhMsgGet(&msg) != pdFAIL) {
+				break;
+			}				
+			printf("Z=%f\r\n", msg.accl);			
+
+			vTaskDelay((portTickType)(1000 / portTICK_RATE_MS));
+		}
+	}
+	else
+		strcpy((char * restrict)pcWriteBuffer, (const char *) failure_message);
+//finish:
+	/* There is no more data to return after this single string, so return
+	pdFALSE. */
+	return pdFALSE;
+
+}
+#endif // CONFIG_LIS3DH
 

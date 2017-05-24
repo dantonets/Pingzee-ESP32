@@ -314,6 +314,7 @@ void app_main()
 {
     esp_err_t ret;
 
+	vAppStart( 2048, 12);
 #ifdef CONFIG_USE_SERIAL_CONSOLE
 	void uart_console_task(void);
 
@@ -324,7 +325,9 @@ void app_main()
 #ifdef CONFIG_SSD1306_OLED
 	vOledStart( 2048, 12);
 #endif // CONFIG_SSD1306_OLED
-	
+#ifdef CONFIG_LIS3DH
+	vLis3dhStart(2048, 12);
+#endif	
 
     nvs_flash_init();
     initialise_wifi();

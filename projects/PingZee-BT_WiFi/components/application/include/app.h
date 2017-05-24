@@ -16,6 +16,13 @@
 // TODO: Will move it to the Konfig file but later...
 #define CONFIG_APPLICATION_DEBUG		1
 
+//****************************************************************************//
+//
+//  Application interface
+//
+//****************************************************************************//
+
+
 #if (CONFIG_APPLICATION_DEBUG)
 void vApplicationGeneralFault( const char *function_name, int line);
 #define  VApplicationGeneralFault	vApplicationGeneralFault(__FUNCTION__, __LINE__)
@@ -30,15 +37,34 @@ void vApplicationGeneralFault(void);
 #define APPMSG_OLED_INIT				(0x03)
 #define APPMSG_OLED_CLEAN				(0x04)
 #define APPMSG_OLED_SHOW				(0x05)
+#define APPMSG_LIS3DH_CHECK_PRESENT	(0x06)
+#define APPMSG_LIS3DH_SETUP			(0x07)
+#define APPMSG_LIS3DH_INTR				(0x08)
 
 typedef struct {
 	uint8_t	cmd;
 	union {
 		uint32_t	v;
-		uint8_t   param[4];
+		uint8_t	param[4];
+		void *	ptr;
 	} d;
 	portBASE_TYPE (*app__doneCallback)(void *);
 } AppMessage_t, *pAppMessage;
+
+extern xQueueHandle xAppInQueue;
+void vAppStart( uint16_t usStackSize, portBASE_TYPE uxPriority );
+portBASE_TYPE AppMsgPut(pAppMessage msg);
+portBASE_TYPE  AppOnDone(void *pvParameters);
+portBASE_TYPE AppMsgGet(pAppMessage msg);
+portBASE_TYPE AppTake(void *pvParameters);
+portBASE_TYPE AppGive(void *pvParameters);
+
+
+//****************************************************************************//
+//
+//  I2C transactions
+//
+//****************************************************************************//
 
 
 /**
@@ -72,6 +98,11 @@ portBASE_TYPE I2C0Take(void *pvParameters);
 portBASE_TYPE I2C0Give(void *pvParameters);
 void vI2C0MasterStart( uint16_t usStackSize, UBaseType_t uxPriority);
 
+//****************************************************************************//
+//
+//  SPI transactions
+//
+//****************************************************************************//
 
 
 typedef struct {
@@ -89,6 +120,13 @@ portBASE_TYPE SPITake(void *pvParameters);
 portBASE_TYPE SPIGive(void *pvParameters);
 
 void vSPIMasterStart( uint16_t usStackSize, UBaseType_t uxPriority);
+
+//****************************************************************************//
+//
+//  OLED transactions
+//
+//****************************************************************************//
+
 
 typedef struct {
 	AppMessage_t		app_msg;
@@ -108,6 +146,26 @@ void vOledClean(void);
 void vOledStart( uint16_t usStackSize, portBASE_TYPE uxPriority );
 void vOledWrite(unsigned char y, unsigned char x, unsigned char *str);
 void vOledWriteRaw(unsigned char y, unsigned char x, unsigned char *str, unsigned short len);
+
+//****************************************************************************//
+//
+//  Accelerometer transactions
+//
+//****************************************************************************//
+
+
+typedef struct {
+	AppMessage_t		app_msg;
+	float				accl;
+	portBASE_TYPE (*lis3dh__doneCallback)(void *);
+} Lis3dhMessage_t, *pLis3dhMessage;
+
+void vLis3dhStart( uint16_t usStackSize, portBASE_TYPE uxPriority );
+portBASE_TYPE Lis3dhMsgPut(pLis3dhMessage msg);
+portBASE_TYPE isLis3dhPresents(void);
+portBASE_TYPE  Lis3dhOnDone(void *pvParameters);
+portBASE_TYPE Lis3dhMsgGet(pLis3dhMessage msg);
+void Lis3dhIntrClean(void);
 
 
 #endif /* MAIN_APP_H_ */
