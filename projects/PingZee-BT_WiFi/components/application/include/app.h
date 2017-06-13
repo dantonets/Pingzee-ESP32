@@ -8,13 +8,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+#include <sys/time.h>
 #include "driver/spi_master.h"
+#include "esp_deep_sleep.h"
 #include "board.h"
 
 #ifndef MAIN_APP_H_
 #define MAIN_APP_H_
-// TODO: Will move it to the Konfig file but later...
-#define CONFIG_APPLICATION_DEBUG		1
 
 //****************************************************************************//
 //
@@ -22,6 +23,26 @@
 //
 //****************************************************************************//
 
+// Global state for the Application task.
+/**
+ * @brief Application status at end of "wake" state
+ */
+typedef enum {
+    WAKE_NOTHING			= 0, /*!<Nothing happen durint the "wake" state*/
+    WAKE_BT_RESPONDED		= 1, /*!<BT has a respond for advertising*/
+    WAKE_MANUALLY_STOPED	= 2, /*!<Going to debugging mode, without deep sleep*/
+    WAKE_MAX,
+} at_wake_end_t;
+
+#define APP_DEEP_SLEEP_PERIOD		60
+#define APP_WAKE_PERIOD			2
+
+typedef struct {
+	struct timeval						app_time;            	// Last time when something changes in the status ..
+	esp_deep_sleep_wakeup_cause_t		wakeup_reason;
+	char 							*tz;					// TimeZone, setups from Konfig	
+	at_wake_end_t					what_happen; 
+} AppState_t, *pAppState;
 
 #if (CONFIG_APPLICATION_DEBUG)
 void vApplicationGeneralFault( const char *function_name, int line);
@@ -30,6 +51,11 @@ void vApplicationGeneralFault( const char *function_name, int line);
 void vApplicationGeneralFault(void);
 #define  VApplicationGeneralFault	vApplicationGeneralFault()
 #endif
+
+void vAppSetCurrentTime(void); 
+void vAppWakeup(pAppState  st);
+pAppState psAppGetStatus(void);
+
 
 #define APPMSG_NOP						(0x00)
 #define APPMSG_GET_STACK_ROOM		(0x01)
@@ -40,6 +66,13 @@ void vApplicationGeneralFault(void);
 #define APPMSG_LIS3DH_CHECK_PRESENT	(0x06)
 #define APPMSG_LIS3DH_SETUP			(0x07)
 #define APPMSG_LIS3DH_INTR				(0x08)
+#define APPMSG_TIMER_INIT				(0x09)
+#define APPMSG_TIMER_INTR				(0x0A)
+#define APPMSG_TIMER_START			(0x0B)
+#define APPMSG_TIMER_STOP				(0x0C)
+#define APPMSG_MAIN_LOOP_START		(0x0D)
+#define APPMSG_MAIN_LOOP_STOP		(0x0E)
+#define APPMSG_DEEP_SLEEP				(0x0F)
 
 typedef struct {
 	uint8_t	cmd;
@@ -165,7 +198,40 @@ portBASE_TYPE Lis3dhMsgPut(pLis3dhMessage msg);
 portBASE_TYPE isLis3dhPresents(void);
 portBASE_TYPE  Lis3dhOnDone(void *pvParameters);
 portBASE_TYPE Lis3dhMsgGet(pLis3dhMessage msg);
-void Lis3dhIntrClean(void);
+void Lis3dhIntr1Clean(void);
+void Lis3dhIntr2Clean(void);
+
+//****************************************************************************//
+//
+//  Timers app control
+//
+//****************************************************************************//
+
+
+typedef struct {
+	AppMessage_t		app_msg;
+	int				timer_idx;
+	portBASE_TYPE (*apptimer__doneCallback)(void *);
+} AppTimerCntl_t, *pAppTimerCntl;
+
+portBASE_TYPE AppTimerMsgPut(pAppTimerCntl msg);
+portBASE_TYPE  AppTimerOnDone(void *pvParameters);
+portBASE_TYPE AppTimerMsgGet(pAppTimerCntl msg);
+portBASE_TYPE  AppTimer0OnDone(void *pvParameters);
+portBASE_TYPE AppTimer0MsgGet(pAppTimerCntl msg);
+portBASE_TYPE AppTimer0MsgGetTimeout(pAppTimerCntl msg, TickType_t delay);
+portBASE_TYPE  AppTimer1OnDone(void *pvParameters);
+portBASE_TYPE AppTimer1MsgGet(pAppTimerCntl msg);
+portBASE_TYPE  AppTimer2OnDone(void *pvParameters);
+portBASE_TYPE AppTimer2MsgGet(pAppTimerCntl msg);
+portBASE_TYPE  AppTimer3OnDone(void *pvParameters);
+portBASE_TYPE AppTimer3MsgGet(pAppTimerCntl msg);
+portBASE_TYPE AppTimersTake(void *pvParameters);
+portBASE_TYPE AppTimersGive(void *pvParameters);
+int getAppTimerVal4Secs(int secs);
+void getAppTimerVal(int timer_idx, uint64_t* timer_val);
+void vAppTimersStart( uint16_t usStackSize, portBASE_TYPE uxPriority );
+
 
 
 #endif /* MAIN_APP_H_ */

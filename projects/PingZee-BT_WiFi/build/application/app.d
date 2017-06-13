@@ -22,6 +22,9 @@ app.o: \
  /home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/stdlib.h \
  /home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/machine/stdlib.h \
  /home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/alloca.h \
+ /home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/time.h \
+ /home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/machine/time.h \
+ /home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/sys/time.h \
  /home/beam/Pingzee/Pingzee-ESP32/components/freertos/include/freertos/FreeRTOS.h \
  /home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/stdint.h \
  /home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/sys/_intsup.h \
@@ -75,6 +78,8 @@ app.o: \
  /home/beam/Pingzee/Pingzee-ESP32/components/nvs_flash/include/nvs_flash.h \
  /home/beam/Pingzee/Pingzee-ESP32/components/freertos/include/freertos/queue.h \
  /home/beam/Pingzee/Pingzee-ESP32/components/log/include/esp_log.h \
+ /home/beam/Pingzee/Pingzee-ESP32/components/driver/include/driver/rtc_io.h \
+ /home/beam/Pingzee/Pingzee-ESP32/components/soc/esp32/include/soc/rtc_cntl_reg.h \
  /home/beam/Pingzee/Pingzee-ESP32/projects/PingZee-BT_WiFi/components/uart_console/include/FreeRTOS_CLI.h \
  /home/beam/Pingzee/Pingzee-ESP32/projects/PingZee-BT_WiFi/components/application/include/app.h \
  /home/beam/Pingzee/Pingzee-ESP32/components/driver/include/driver/spi_master.h \
@@ -125,6 +130,12 @@ app.o: \
 /home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/machine/stdlib.h:
 
 /home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/alloca.h:
+
+/home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/time.h:
+
+/home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/machine/time.h:
+
+/home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/sys/time.h:
 
 /home/beam/Pingzee/Pingzee-ESP32/components/freertos/include/freertos/FreeRTOS.h:
 
@@ -231,6 +242,10 @@ app.o: \
 /home/beam/Pingzee/Pingzee-ESP32/components/freertos/include/freertos/queue.h:
 
 /home/beam/Pingzee/Pingzee-ESP32/components/log/include/esp_log.h:
+
+/home/beam/Pingzee/Pingzee-ESP32/components/driver/include/driver/rtc_io.h:
+
+/home/beam/Pingzee/Pingzee-ESP32/components/soc/esp32/include/soc/rtc_cntl_reg.h:
 
 /home/beam/Pingzee/Pingzee-ESP32/projects/PingZee-BT_WiFi/components/uart_console/include/FreeRTOS_CLI.h:
 

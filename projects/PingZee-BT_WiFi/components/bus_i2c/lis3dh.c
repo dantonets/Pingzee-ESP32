@@ -46,6 +46,7 @@ static esp_err_t  Lis3dh_readRegisterInt16( int16_t* outputPointer, uint8_t offs
 static void Lis3dh_setup_default(void);
 static void Lis3dh_applySettings( pLis3dh_settings settings);
 static void Lis3dh_config_Intterupts(void);
+static void Lis3dh_config_lpwMode(void);
 static void Lis3dh_gpio_cfg(void);
 static float Lis3dh_calcAccel( int16_t input );
 static int16_t Lis3dh_readRawAccelX( void );
@@ -99,7 +100,7 @@ static void prvLis3dhTask( void *pvParameters )
 			vTaskDelay(100);
 		}
 
-		Lis3dh_gpio_cfg();
+//		Lis3dh_gpio_cfg();
 		Lis3dh_setup_default();
 		current_settings = &lis3dh_default_settings;
 		
@@ -135,6 +136,8 @@ static void prvLis3dhTask( void *pvParameters )
 						break;
 					case APPMSG_LIS3DH_SETUP:
 						if (ucLis3dhStatus == LIS3DH_PRESENT ) {
+
+
 							settings = (pLis3dh_settings)master_pLis3dhMsg->app_msg.d.ptr;
 							if (settings == NULL) 
 								Lis3dh_applySettings(&lis3dh_default_settings);
@@ -143,7 +146,10 @@ static void prvLis3dhTask( void *pvParameters )
 								current_settings = settings;
 							}
 							Lis3dh_config_Intterupts();
-						}
+
+//							Lis3dh_config_lpwMode();  // Test settings for now ..
+
+ 						}
 						break;	
 					}
 				}else{
@@ -218,6 +224,7 @@ static esp_err_t  Lis3dh_readRegister(uint8_t* outputPointer, uint8_t offset)
 	I2CMessage_t msg;
 	uint8_t  addr[2], value;
 
+	I2C0Take(NULL);
 	addr[0] = offset;
 		
 	msg.tx.length = 1;
@@ -226,8 +233,9 @@ static esp_err_t  Lis3dh_readRegister(uint8_t* outputPointer, uint8_t offset)
 	msg.rx.length = 1;
 	msg.rx.chip = LIS3DH_I2C_ADDR;
 	msg.rx.buffer = &value;
+	msg.tx_wait_time = 0;
 	msg.i2c__doneCallback = I2C0OnDone;
-	I2C0Take(NULL);
+
 	I2C0MsgPut(&msg);
 	while (I2C0MsgGet(&msg) != pdFAIL) {
 		break;
@@ -254,6 +262,7 @@ static esp_err_t  Lis3dh_writeRegister(uint8_t offset, uint8_t dataToWrite)
 	I2CMessage_t msg;
 	uint8_t  addr[2];
 
+	I2C0Take(NULL);
 	addr[0] = offset;
 	addr[1] = dataToWrite;
 
@@ -264,7 +273,6 @@ static esp_err_t  Lis3dh_writeRegister(uint8_t offset, uint8_t dataToWrite)
 	msg.rx.chip = LIS3DH_I2C_ADDR;
 	msg.rx.buffer = NULL;
 	msg.i2c__doneCallback = I2C0OnDone;
-	I2C0Take(NULL);
 	I2C0MsgPut(&msg);
 	while (I2C0MsgGet(&msg) != pdFAIL) {
 		break;
@@ -293,6 +301,7 @@ static esp_err_t  Lis3dh_readRegisterRegion(uint8_t *outputPointer , uint8_t off
 	I2CMessage_t msg;
 	uint8_t  addr[2];
 
+	I2C0Take(NULL);
 	addr[0] = offset | 0x80;  //turn auto-increment bit on, bit 7 for I2C
 	msg.tx.length = 1;
 	msg.tx.chip = LIS3DH_I2C_ADDR;
@@ -300,8 +309,8 @@ static esp_err_t  Lis3dh_readRegisterRegion(uint8_t *outputPointer , uint8_t off
 	msg.rx.length = length;
 	msg.rx.chip = LIS3DH_I2C_ADDR;
 	msg.rx.buffer = outputPointer;
+	msg.tx_wait_time = 0;
 	msg.i2c__doneCallback = I2C0OnDone;
-	I2C0Take(NULL);
 	I2C0MsgPut(&msg);
 	while (I2C0MsgGet(&msg) != pdFAIL) {
 		break;
@@ -414,6 +423,8 @@ static void Lis3dh_applySettings( pLis3dh_settings settings)
 	dataToWrite |= (settings->zAccelEnabled & 0x01) << 2;
 	dataToWrite |= (settings->yAccelEnabled & 0x01) << 1;
 	dataToWrite |= (settings->xAccelEnabled & 0x01);
+	dataToWrite |= (0x01 << 3);  // Setup LPen
+	
 	//Now, write the patched together data
 #ifdef CONFIG_LIS3DH_VERBOSE_DEBUG
 	ESP_LOGI(TAG, "LIS3DH_CTRL_REG1(0x%02x) := 0x%02x\r\n", LIS3DH_CTRL_REG1, dataToWrite);
@@ -467,12 +478,158 @@ static void Lis3dh_config_Intterupts(void)
 	ESP_LOGI(TAG, "LIS3DH_INT1_CFG(0x%02x) := 0x%02x\r\n", LIS3DH_INT1_CFG, dataToWrite);
 #endif
 	Lis3dh_writeRegister(LIS3DH_INT1_CFG, dataToWrite);
+  
+  //LIS3DH_INT1_THS   
+  dataToWrite = 0;
+  //Provide 7 bit value, 0x7F always equals max range by accelRange setting
+  dataToWrite |= 0x10; // 1/8 range
+#ifdef CONFIG_LIS3DH_VERBOSE_DEBUG
+	ESP_LOGI(TAG, "LIS3DH_INT1_THS(0x%02x) := 0x%02x\r\n", LIS3DH_INT1_THS, dataToWrite);
+#endif
+	Lis3dh_writeRegister(LIS3DH_INT1_THS, dataToWrite);
+  
+  //LIS3DH_INT1_DURATION  
+  dataToWrite = 0;
+  //minimum duration of the interrupt
+  //LSB equals 1/(sample rate)
+  dataToWrite |= 0x01; // 1 * 1/50 s = 20ms
+#ifdef CONFIG_LIS3DH_VERBOSE_DEBUG
+	ESP_LOGI(TAG, "LIS3DH_INT1_DURATION(0x%02x) := 0x%02x\r\n", LIS3DH_INT1_DURATION, dataToWrite);
+#endif
+	Lis3dh_writeRegister(LIS3DH_INT1_DURATION, dataToWrite);
+  
+  //LIS3DH_CLICK_CFG   
+  dataToWrite = 0;
+  //Set these to enable individual axes of generation source (or direction)
+  // -- set = 1 to enable
+  //dataToWrite |= 0x20;//Z double-click
+  dataToWrite |= 0x10;//Z click
+  //dataToWrite |= 0x08;//Y double-click 
+  dataToWrite |= 0x04;//Y click
+  //dataToWrite |= 0x02;//X double-click
+  dataToWrite |= 0x01;//X click
+#ifdef CONFIG_LIS3DH_VERBOSE_DEBUG
+	ESP_LOGI(TAG, "LIS3DH_CLICK_CFG(0x%02x) := 0x%02x\r\n", LIS3DH_CLICK_CFG, dataToWrite);
+#endif
+	Lis3dh_writeRegister(LIS3DH_CLICK_CFG, dataToWrite);
+  
+  //LIS3DH_CLICK_SRC
+  dataToWrite = 0;
+  //Set these to enable click behaviors (also read to check status)
+  // -- set = 1 to enable
+  //dataToWrite |= 0x20;//Enable double clicks
+  dataToWrite |= 0x04;//Enable single clicks
+  //dataToWrite |= 0x08;//sine (0 is positive, 1 is negative)
+  dataToWrite |= 0x04;//Z click detect enabled
+  dataToWrite |= 0x02;//Y click detect enabled
+  dataToWrite |= 0x01;//X click detect enabled
+#ifdef CONFIG_LIS3DH_VERBOSE_DEBUG
+	ESP_LOGI(TAG, "LIS3DH_CLICK_CFG(0x%02x) := 0x%02x\r\n", LIS3DH_CLICK_CFG, dataToWrite);
+#endif
+	Lis3dh_writeRegister(LIS3DH_CLICK_CFG, dataToWrite);
+  
+  //LIS3DH_CLICK_THS   
+  dataToWrite = 0;
+  //This sets the threshold where the click detection process is activated.
+  //Provide 7 bit value, 0x7F always equals max range by accelRange setting
+  dataToWrite |= 0x0A; // ~1/16 range
+#ifdef CONFIG_LIS3DH_VERBOSE_DEBUG
+	ESP_LOGI(TAG, "LIS3DH_CLICK_THS(0x%02x) := 0x%02x\r\n", LIS3DH_CLICK_THS, dataToWrite);
+#endif
+	Lis3dh_writeRegister(LIS3DH_CLICK_THS, dataToWrite);
+  
+  //LIS3DH_TIME_LIMIT  
+  dataToWrite = 0;
+  //Time acceleration has to fall below threshold for a valid click.
+  //LSB equals 1/(sample rate)
+  dataToWrite |= 0x08; // 8 * 1/50 s = 160ms
+#ifdef CONFIG_LIS3DH_VERBOSE_DEBUG
+	ESP_LOGI(TAG, "LIS3DH_TIME_LIMIT(0x%02x) := 0x%02x\r\n", LIS3DH_TIME_LIMIT, dataToWrite);
+#endif
+	Lis3dh_writeRegister(LIS3DH_TIME_LIMIT, dataToWrite);
+  
+  //LIS3DH_TIME_LATENCY
+  dataToWrite = 0;
+  //hold-off time before allowing detection after click event
+  //LSB equals 1/(sample rate)
+  dataToWrite |= 0x08; // 4 * 1/50 s = 160ms
+#ifdef CONFIG_LIS3DH_VERBOSE_DEBUG
+	ESP_LOGI(TAG, "LIS3DH_TIME_LATENCY(0x%02x) := 0x%02x\r\n", LIS3DH_TIME_LATENCY, dataToWrite);
+#endif
+	Lis3dh_writeRegister(LIS3DH_TIME_LATENCY, dataToWrite);
+  
+  //LIS3DH_TIME_WINDOW 
+  dataToWrite = 0;
+  //hold-off time before allowing detection after click event
+  //LSB equals 1/(sample rate)
+  dataToWrite |= 0x10; // 16 * 1/50 s = 320ms
+#ifdef CONFIG_LIS3DH_VERBOSE_DEBUG
+	ESP_LOGI(TAG, "LIS3DH_TIME_WINDOW(0x%02x) := 0x%02x\r\n", LIS3DH_TIME_WINDOW, dataToWrite);
+#endif
+	Lis3dh_writeRegister(LIS3DH_TIME_WINDOW, dataToWrite);
+
+  //LIS3DH_CTRL_REG5
+  //Int1 latch interrupt and 4D on  int1 (preserve fifo en)
+  Lis3dh_readRegister(&dataToWrite, LIS3DH_CTRL_REG5);
+  dataToWrite &= 0xF3; //Clear bits of interest
+  dataToWrite |= 0x08; //Latch interrupt (Cleared by reading int1_src)
+  //dataToWrite |= 0x04; //Pipe 4D detection from 6D recognition to int1?
+#ifdef CONFIG_LIS3DH_VERBOSE_DEBUG
+	ESP_LOGI(TAG, "LIS3DH_CTRL_REG5(0x%02x) := 0x%02x\r\n", LIS3DH_CTRL_REG5, dataToWrite);
+#endif
+	Lis3dh_writeRegister(LIS3DH_CTRL_REG5, dataToWrite);
+
+  //LIS3DH_CTRL_REG3
+  //Choose source for pin 1
+  dataToWrite = 0;
+  //dataToWrite |= 0x80; //Click detect on pin 1
+  dataToWrite |= 0x40; //AOI1 event (Generator 1 interrupt on pin 1)
+  dataToWrite |= 0x20; //AOI2 event ()
+  //dataToWrite |= 0x10; //Data ready
+  //dataToWrite |= 0x04; //FIFO watermark
+  //dataToWrite |= 0x02; //FIFO overrun
+#ifdef CONFIG_LIS3DH_VERBOSE_DEBUG
+	ESP_LOGI(TAG, "LIS3DH_CTRL_REG3(0x%02x) := 0x%02x\r\n", LIS3DH_CTRL_REG3, dataToWrite);
+#endif
+	Lis3dh_writeRegister(LIS3DH_CTRL_REG3, dataToWrite);
+ 
+  //LIS3DH_CTRL_REG6
+  //Choose source for pin 2 and both pin output inversion state
+  dataToWrite = 0;
+  dataToWrite |= 0x80; //Click int on pin 2
+  //dataToWrite |= 0x40; //Generator 1 interrupt on pin 2
+  //dataToWrite |= 0x10; //boot status on pin 2
+  //dataToWrite |= 0x02; //invert both outputs
+#ifdef CONFIG_LIS3DH_VERBOSE_DEBUG
+	ESP_LOGI(TAG, "LIS3DH_CTRL_REG6(0x%02x) := 0x%02x\r\n", LIS3DH_CTRL_REG6, dataToWrite);
+#endif
+	Lis3dh_writeRegister(LIS3DH_CTRL_REG6, dataToWrite);
+  
+// ----------------------------------------------------
+#if 0
+  //LIS3DH_INT1_CFG   
+  //dataToWrite |= 0x80;//AOI, 0 = OR 1 = AND
+  //dataToWrite |= 0x40;//6D, 0 = interrupt source, 1 = 6 direction source
+  //Set these to enable individual axes of generation source (or direction)
+  // -- high and low are used generically
+  //dataToWrite |= 0x20;//Z high
+  //dataToWrite |= 0x10;//Z low
+  dataToWrite |= 0x08;//Y high
+  //dataToWrite |= 0x04;//Y low
+  //dataToWrite |= 0x02;//X high
+  //dataToWrite |= 0x01;//X low
+#ifdef CONFIG_LIS3DH_VERBOSE_DEBUG
+	ESP_LOGI(TAG, "LIS3DH_INT1_CFG(0x%02x) := 0x%02x\r\n", LIS3DH_INT1_CFG, dataToWrite);
+#endif
+	Lis3dh_writeRegister(LIS3DH_INT1_CFG, dataToWrite);
 //  myIMU.writeRegister(LIS3DH_INT1_CFG, dataToWrite);
   
   //LIS3DH_INT1_THS   
   dataToWrite = 0;
   //Provide 7 bit value, 0x7F always equals max range by accelRange setting
   dataToWrite |= 0x10; // 1/8 range
+//  dataToWrite |= 0x3f; // 1/2 range
+//  dataToWrite |= 0x1f; // 1/4 range
 #ifdef CONFIG_LIS3DH_VERBOSE_DEBUG
 	ESP_LOGI(TAG, "LIS3DH_INT1_THS(0x%02x) := 0x%02x\r\n", LIS3DH_INT1_THS, dataToWrite);
 #endif
@@ -489,7 +646,7 @@ static void Lis3dh_config_Intterupts(void)
 #endif
 	Lis3dh_writeRegister(LIS3DH_INT1_DURATION, dataToWrite);
 //  myIMU.writeRegister(LIS3DH_INT1_DURATION, dataToWrite);
-  
+
   //LIS3DH_CLICK_CFG   
   dataToWrite = 0;
   //Set these to enable individual axes of generation source (or direction)
@@ -595,7 +752,7 @@ static void Lis3dh_config_Intterupts(void)
 #endif
 	Lis3dh_writeRegister(LIS3DH_CTRL_REG3, dataToWrite);
 //  myIMU.writeRegister(LIS3DH_CTRL_REG3, dataToWrite);
- 
+
   //LIS3DH_CTRL_REG6
   //Choose source for pin 2 and both pin output inversion state
   dataToWrite = 0;
@@ -608,7 +765,145 @@ static void Lis3dh_config_Intterupts(void)
 #endif
 	Lis3dh_writeRegister(LIS3DH_CTRL_REG6, dataToWrite);
 //  myIMU.writeRegister(LIS3DH_CTRL_REG6, dataToWrite);
+
+  //LIS3DH_ACT_THS
+  //This sets the threshold where the sleep-to-wake and return-to-sleep is activated.
+  //Provide 8 bit value, 0xFF always equals max range by accelRange setting
+  dataToWrite = 0;
+//  dataToWrite |= 0x80; // 1/2 for range
+  dataToWrite |= 0x50; // as in the ST example 
+#ifdef CONFIG_LIS3DH_VERBOSE_DEBUG
+	ESP_LOGI(TAG, "LIS3DH_ACT_THS(0x%02x) := 0x%02x\r\n", LIS3DH_ACT_THS, dataToWrite);
+#endif
+	Lis3dh_writeRegister(LIS3DH_ACT_THS, dataToWrite);
+
+  //LIS3DH_ACT_TIME_LIMIT
+  //Time acceleration has to fall below threshold for a the sleep-to-wake and return-to-sleep.
+  dataToWrite = 0;
+  dataToWrite |= 0x20; // 1/2 for range
+#ifdef CONFIG_LIS3DH_VERBOSE_DEBUG
+	ESP_LOGI(TAG, "LIS3DH_ACT_TIME_LIMIT(0x%02x) := 0x%02x\r\n", LIS3DH_ACT_TIME_LIMIT, dataToWrite);
+#endif
+	Lis3dh_writeRegister(LIS3DH_ACT_TIME_LIMIT, dataToWrite);
+
+#endif
+}
+
+static void Lis3dh_config_lpwMode(void)
+{
+  uint8_t dataToWrite = 0;
+
+	dataToWrite = 0x5F;
+#ifdef CONFIG_LIS3DH_VERBOSE_DEBUG
+	ESP_LOGI(TAG, "LIS3DH_CTRL_REG1(0x%02x) := 0x%02x\r\n", LIS3DH_CTRL_REG1, dataToWrite);
+#endif
+	Lis3dh_writeRegister(LIS3DH_CTRL_REG1, dataToWrite);
+
+  //LIS3DH_ACT_THS
+  //This sets the threshold where the sleep-to-wake and return-to-sleep is activated.
+  //Provide 8 bit value, 0xFF always equals max range by accelRange setting
+  dataToWrite = 0;
+//  dataToWrite |= 0x80; // 1/2 for range
+  dataToWrite |= 0x50; // as in the ST example 
+#ifdef CONFIG_LIS3DH_VERBOSE_DEBUG
+	ESP_LOGI(TAG, "LIS3DH_ACT_THS(0x%02x) := 0x%02x\r\n", LIS3DH_ACT_THS, dataToWrite);
+#endif
+	Lis3dh_writeRegister(LIS3DH_ACT_THS, dataToWrite);
+
+  //LIS3DH_ACT_TIME_LIMIT
+  //Time acceleration has to fall below threshold for a the sleep-to-wake and return-to-sleep.
+  dataToWrite = 0;
+  dataToWrite |= 0x20; // 1/2 for range
+#ifdef CONFIG_LIS3DH_VERBOSE_DEBUG
+	ESP_LOGI(TAG, "LIS3DH_ACT_TIME_LIMIT(0x%02x) := 0x%02x\r\n", LIS3DH_ACT_TIME_LIMIT, dataToWrite);
+#endif
+	Lis3dh_writeRegister(LIS3DH_ACT_TIME_LIMIT, dataToWrite);
+
+#if 0
+  //LIS3DH_CTRL_REG3
+  //Choose source for pin 1
+  dataToWrite = 0;
+  //dataToWrite |= 0x80; //Click detect on pin 1
+  // dataToWrite |= 0x40; //AOI1 event (Generator 1 interrupt on pin 1)
+  dataToWrite |= 0x20; //AOI2 event ()
+  //dataToWrite |= 0x10; //Data ready
+  //dataToWrite |= 0x04; //FIFO watermark
+  //dataToWrite |= 0x02; //FIFO overrun
+#ifdef CONFIG_LIS3DH_VERBOSE_DEBUG
+	ESP_LOGI(TAG, "LIS3DH_CTRL_REG3(0x%02x) := 0x%02x\r\n", LIS3DH_CTRL_REG3, dataToWrite);
+#endif
+	Lis3dh_writeRegister(LIS3DH_CTRL_REG3, dataToWrite);
+//  myIMU.writeRegister(LIS3DH_CTRL_REG3, dataToWrite);
+#endif
+  //LIS3DH_CTRL_REG5
+  //Latch interrupt 2
+  dataToWrite = 0;
+  //dataToWrite |= 0x80; //Click detect on pin 1
+  // dataToWrite |= 0x40; //AOI1 event (Generator 1 interrupt on pin 1)
+  dataToWrite |= 0x02; //Latch interrupt on pin2
+  //dataToWrite |= 0x10; //Data ready
+  //dataToWrite |= 0x04; //FIFO watermark
+  //dataToWrite |= 0x02; //FIFO overrun
+#ifdef CONFIG_LIS3DH_VERBOSE_DEBUG
+	ESP_LOGI(TAG, "LIS3DH_CTRL_REG5(0x%02x) := 0x%02x\r\n", LIS3DH_CTRL_REG5, dataToWrite);
+#endif
+	Lis3dh_writeRegister(LIS3DH_CTRL_REG5, dataToWrite);
+
+  //LIS3DH_INT2_THS   
+  dataToWrite = 0;
+  //Provide 7 bit value, 0x7F always equals max range by accelRange setting
+  dataToWrite |= 0x10; // 1/2 range
+//  dataToWrite |= 0x1f; // 1/4 range
+#ifdef CONFIG_LIS3DH_VERBOSE_DEBUG
+	ESP_LOGI(TAG, "LIS3DH_INT2_THS(0x%02x) := 0x%02x\r\n", LIS3DH_INT2_THS, dataToWrite);
+#endif
+	Lis3dh_writeRegister(LIS3DH_INT2_THS, dataToWrite);
   
+  //LIS3DH_INT2_DURATION  
+  dataToWrite = 0;
+  //minimum duration of the interrupt
+  //LSB equals 1/(sample rate)
+//  dataToWrite |= 0x01; // 1 * 1/50 s = 20ms
+  dataToWrite |= 0x02; // 1 * 1/50 s = 20ms
+#ifdef CONFIG_LIS3DH_VERBOSE_DEBUG
+	ESP_LOGI(TAG, "LIS3DH_INT2_DURATION(0x%02x) := 0x%02x\r\n", LIS3DH_INT2_DURATION, dataToWrite);
+#endif
+	Lis3dh_writeRegister(LIS3DH_INT2_DURATION, dataToWrite);
+
+  //LIS3DH_INT2_CFG   
+  dataToWrite = 0;
+  // dataToWrite |= 0x80;//AOI, 0 = OR 1 = AND
+  dataToWrite |= 0x40;//6D, 0 = interrupt source, 1 = 6 direction source
+  //Set these to enable individual axes of generation source (or direction)
+  // -- high and low are used generically
+  //dataToWrite |= 0x20;//Z high
+  //dataToWrite |= 0x10;//Z low
+  dataToWrite |= 0x08;//Y high
+  dataToWrite |= 0x04;//Y low
+  dataToWrite |= 0x02;//X high
+  dataToWrite |= 0x01;//X low
+#ifdef CONFIG_LIS3DH_VERBOSE_DEBUG
+	ESP_LOGI(TAG, "LIS3DH_INT2_CFG(0x%02x) := 0x%02x\r\n", LIS3DH_INT2_CFG, dataToWrite);
+#endif
+	Lis3dh_writeRegister(LIS3DH_INT2_CFG, dataToWrite);
+
+
+  //LIS3DH_CTRL_REG6
+  //Choose source for pin 2
+  dataToWrite = 0;
+  //dataToWrite |= 0x80; //Click detect on pin 1
+  // dataToWrite |= 0x40; //AOI1 event (Generator 1 interrupt on pin 1)
+  dataToWrite |= 0x08; //Enable interrupts on pin2
+  //dataToWrite |= 0x10; //Data ready
+  //dataToWrite |= 0x04; //FIFO watermark
+  //dataToWrite |= 0x02; //FIFO overrun
+#ifdef CONFIG_LIS3DH_VERBOSE_DEBUG
+	ESP_LOGI(TAG, "LIS3DH_CTRL_REG6(0x%02x) := 0x%02x\r\n", LIS3DH_CTRL_REG6, dataToWrite);
+#endif
+	Lis3dh_writeRegister(LIS3DH_CTRL_REG6, dataToWrite);
+
+
+
 }
 
 //****************************************************************************//
@@ -621,6 +916,9 @@ static int16_t Lis3dh_readRawAccelX( void )
 {
 	int16_t output;
 	Lis3dh_readRegisterInt16( &output, LIS3DH_OUT_X_L );
+#ifdef CONFIG_LIS3DH_VERBOSE_DEBUG
+	ESP_LOGI(TAG, "LIS3DH_OUT_X_L(0x%02x) := 0x%04x\r\n", LIS3DH_OUT_X_L, output);
+#endif	
 	return output;
 }
 static float Lis3dh_readFloatAccelX( void )
@@ -633,6 +931,9 @@ static int16_t Lis3dh_readRawAccelY( void )
 {
 	int16_t output;
 	Lis3dh_readRegisterInt16( &output, LIS3DH_OUT_Y_L );
+#ifdef CONFIG_LIS3DH_VERBOSE_DEBUG
+	ESP_LOGI(TAG, "LIS3DH_OUT_Y_L(0x%02x) := 0x%04x\r\n", LIS3DH_OUT_Y_L, output);
+#endif	
 	return output;
 }
 
@@ -646,6 +947,9 @@ static int16_t Lis3dh_readRawAccelZ( void )
 {
 	int16_t output;
 	Lis3dh_readRegisterInt16( &output, LIS3DH_OUT_Z_L );
+#ifdef CONFIG_LIS3DH_VERBOSE_DEBUG
+	ESP_LOGI(TAG, "LIS3DH_OUT_Z_L(0x%02x) := 0x%04x\r\n", LIS3DH_OUT_Z_L, output);
+#endif	
 	return output;
 
 }
@@ -691,7 +995,7 @@ static void IRAM_ATTR lis3dh_gpio_isr_handler(void* arg)
 //     portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
     AppMessage_t ISRMsg;   // Wakeup the app ..
 	if (xAppInQueue != NULL) {
-		gpio_intr_disable(LIS3DH_GPIO_INT_PIN);
+//		gpio_intr_disable(LIS3DH_GPIO_INT_PIN);
 		ISRMsg.cmd = APPMSG_LIS3DH_INTR;
 		ISRMsg.d.v = (uint32_t) arg;
 		ISRMsg.app__doneCallback = NULL;
@@ -713,7 +1017,7 @@ static void Lis3dh_gpio_cfg(void)
     //interrupt of rising edge
     io_conf.intr_type = GPIO_PIN_INTR_POSEDGE;
     //bit mask of the pins, use GPIO25 here
-    io_conf.pin_bit_mask = (1<< LIS3DH_GPIO_INT_PIN);
+    io_conf.pin_bit_mask = (1<< LIS3DH_GPIO_INT_PIN1)/* | (1<< LIS3DH_GPIO_INT_PIN2) */ ;
     //set as input mode    
     io_conf.mode = GPIO_MODE_INPUT;
     //enable pull-up mode
@@ -723,12 +1027,14 @@ static void Lis3dh_gpio_cfg(void)
     //install gpio isr service
     gpio_install_isr_service(ESP_INTR_FLAG_DEFAULT);
     //hook isr handler for specific gpio pin
-    gpio_isr_handler_add(LIS3DH_GPIO_INT_PIN, lis3dh_gpio_isr_handler, (void*) LIS3DH_GPIO_INT_PIN);
+    gpio_isr_handler_add(LIS3DH_GPIO_INT_PIN1, lis3dh_gpio_isr_handler, (void*) LIS3DH_GPIO_INT_PIN1);
+//    gpio_isr_handler_add(LIS3DH_GPIO_INT_PIN2, lis3dh_gpio_isr_handler, (void*) LIS3DH_GPIO_INT_PIN2);
+	
 
 }
 
 
-void Lis3dhIntrClean(void) 
+void Lis3dhIntr1Clean(void) 
 {
   	uint8_t dataRead;
 
@@ -744,6 +1050,23 @@ void Lis3dhIntrClean(void)
   	if(dataRead & 0x01) printf("X low");
   	printf("\r\n");
 #endif
-	gpio_intr_enable(LIS3DH_GPIO_INT_PIN);
+//	gpio_intr_enable(LIS3DH_GPIO_INT_PIN);
 
+}
+void Lis3dhIntr2Clean(void) 
+{
+  	uint8_t dataRead;
+
+	Lis3dh_readRegister(&dataRead, LIS3DH_INT2_SRC);//cleared by reading
+#ifdef CONFIG_LIS3DH_VERBOSE_DEBUG
+  	printf("Decoded events (%02x): ", dataRead);
+  	if(dataRead & 0x40) printf("Interrupt Active ");
+  	if(dataRead & 0x20) printf("Z high ");
+  	if(dataRead & 0x10) printf("Z low ");
+  	if(dataRead & 0x08) printf("Y high ");
+  	if(dataRead & 0x04) printf("Y low ");
+  	if(dataRead & 0x02) printf("X high ");
+  	if(dataRead & 0x01) printf("X low");
+  	printf("\r\n");
+#endif
 }

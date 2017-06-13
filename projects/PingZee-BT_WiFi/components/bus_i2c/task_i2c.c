@@ -174,7 +174,8 @@ printf("ret = 0x%x\r\n", ret);
 						/*
 						 * Delay between each write or read cycle between TWI Stop and TWI Start.
 						 */
-						 vTaskDelay(I2C0_CONTINUE_RW_DELAY/portTICK_RATE_MS);
+						if (master_pI2CMsg->tx_wait_time)
+							vTaskDelay(I2C0_CONTINUE_RW_DELAY/portTICK_RATE_MS);
 
 						ret = i2c_master_read_slave(I2C_MASTER_NUM,						/* Controller */ 
 													master_pI2CMsg->rx.chip,				/* Slave address */		

@@ -22,6 +22,9 @@ blufi_main.o: \
  /home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/alloca.h \
  /home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/string.h \
  /home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/sys/string.h \
+ /home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/time.h \
+ /home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/machine/time.h \
+ /home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/sys/time.h \
  /home/beam/Pingzee/Pingzee-ESP32/components/freertos/include/freertos/FreeRTOS.h \
  /home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/stdint.h \
  /home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/sys/_intsup.h \
@@ -87,9 +90,6 @@ blufi_main.o: \
  /home/beam/Pingzee/Pingzee-ESP32/components/lwip/include/lwip/lwip/ip_addr.h \
  /home/beam/Pingzee/Pingzee-ESP32/components/lwip/include/lwip/lwip/opt.h \
  /home/beam/Pingzee/Pingzee-ESP32/components/lwip/include/lwip/port/lwipopts.h \
- /home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/time.h \
- /home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/machine/time.h \
- /home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/sys/time.h \
  /home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/sys/fcntl.h \
  /home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/sys/_default_fcntl.h \
  /home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/sys/stat.h \
@@ -108,6 +108,8 @@ blufi_main.o: \
  /home/beam/Pingzee/Pingzee-ESP32/components/lwip/include/lwip/apps/dhcpserver.h \
  /home/beam/Pingzee/Pingzee-ESP32/components/esp32/include/esp_event_loop.h \
  /home/beam/Pingzee/Pingzee-ESP32/components/log/include/esp_log.h \
+ /home/beam/Pingzee/Pingzee-ESP32/components/driver/include/driver/rtc_io.h \
+ /home/beam/Pingzee/Pingzee-ESP32/components/soc/esp32/include/soc/rtc_cntl_reg.h \
  /home/beam/Pingzee/Pingzee-ESP32/components/nvs_flash/include/nvs_flash.h \
  /home/beam/Pingzee/Pingzee-ESP32/components/bt/include/bt.h \
  /home/beam/Pingzee/Pingzee-ESP32/components/bt/bluedroid/api/include/esp_blufi_api.h \
@@ -165,6 +167,12 @@ blufi_main.o: \
 /home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/string.h:
 
 /home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/sys/string.h:
+
+/home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/time.h:
+
+/home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/machine/time.h:
+
+/home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/sys/time.h:
 
 /home/beam/Pingzee/Pingzee-ESP32/components/freertos/include/freertos/FreeRTOS.h:
 
@@ -296,12 +304,6 @@ blufi_main.o: \
 
 /home/beam/Pingzee/Pingzee-ESP32/components/lwip/include/lwip/port/lwipopts.h:
 
-/home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/time.h:
-
-/home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/machine/time.h:
-
-/home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/sys/time.h:
-
 /home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/sys/fcntl.h:
 
 /home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/sys/_default_fcntl.h:
@@ -337,6 +339,10 @@ blufi_main.o: \
 /home/beam/Pingzee/Pingzee-ESP32/components/esp32/include/esp_event_loop.h:
 
 /home/beam/Pingzee/Pingzee-ESP32/components/log/include/esp_log.h:
+
+/home/beam/Pingzee/Pingzee-ESP32/components/driver/include/driver/rtc_io.h:
+
+/home/beam/Pingzee/Pingzee-ESP32/components/soc/esp32/include/soc/rtc_cntl_reg.h:
 
 /home/beam/Pingzee/Pingzee-ESP32/components/nvs_flash/include/nvs_flash.h:
 

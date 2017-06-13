@@ -17,6 +17,9 @@
 #include <ctype.h>
 // ESP headers
 #include "esp_system.h"
+#include "esp_log.h"
+#include "esp_attr.h"
+#include "esp_deep_sleep.h"
 
 /* FreeRTOS+CLI includes. */
 #include "FreeRTOS_CLI.h"
@@ -24,6 +27,8 @@
 /* Application related includes */
 #include "app.h"
 #include "board.h"
+
+static const char *TAG = "CLI";
 
 /*-----------------------------------------------------------*/
 static portBASE_TYPE esp32_resurces_command(int8_t *pcWriteBuffer, 	size_t xWriteBufferLen, const int8_t *pcCommandString);
@@ -34,6 +39,8 @@ static portBASE_TYPE oled_output_command(int8_t *pcWriteBuffer, size_t xWriteBuf
 #ifdef CONFIG_LIS3DH
 static portBASE_TYPE lis3dh_command(int8_t *pcWriteBuffer, size_t xWriteBufferLen, const int8_t *pcCommandString);
 #endif // CONFIG_LIS3DH
+static portBASE_TYPE esp32_deepsleep_command(int8_t *pcWriteBuffer, 	size_t xWriteBufferLen, const int8_t *pcCommandString);
+static portBASE_TYPE esp32_mainloop_command(int8_t *pcWriteBuffer, 	size_t xWriteBufferLen, const int8_t *pcCommandString);
 
 static const int8_t *failure_message = (int8_t *) "*** ERROR: Uncorrect parameter\r\n";
 
@@ -44,6 +51,22 @@ static const CLI_Command_Definition_t esp32_resurces_command_definition =
 	(const int8_t *const) "res\tShow resources\r\n",
 	esp32_resurces_command, /* The function to run. */
 	0 /* No parameters are expected. */
+};
+
+static const CLI_Command_Definition_t esp32_deepsleep_command_definition =
+{
+	(const int8_t *const) "deepsleep", /* The command string to type. */
+	(const int8_t *const) "deepsleep\tN\tDeep sleep for N seconds\r\n",
+	esp32_deepsleep_command, /* The function to run. */
+	1 /* One parameter are expected. */
+};
+
+static const CLI_Command_Definition_t esp32_mainloop_command_definition =
+{
+	(const int8_t *const) "main", /* The command string to type. */
+	(const int8_t *const) "main\t{start|stop}\tControl for the Application Main Loop\r\n",
+	esp32_mainloop_command, /* The function to run. */
+	1 /* One parameter are expected. */
 };
 
 static const CLI_Command_Definition_t esp32_i2c_command_definition =
@@ -80,6 +103,8 @@ void vRegisterCLICommands(void)
 {
 	/* Register all the command line commands defined immediately above. */
 	FreeRTOS_CLIRegisterCommand(&esp32_resurces_command_definition);
+	FreeRTOS_CLIRegisterCommand(&esp32_deepsleep_command_definition);
+	FreeRTOS_CLIRegisterCommand(&esp32_mainloop_command_definition);
 	FreeRTOS_CLIRegisterCommand(&esp32_i2c_command_definition);
 #ifdef CONFIG_SSD1306_OLED
 	FreeRTOS_CLIRegisterCommand(&oled_output_command_definition);
@@ -375,4 +400,89 @@ static portBASE_TYPE lis3dh_command(int8_t *pcWriteBuffer, size_t xWriteBufferLe
 
 }
 #endif // CONFIG_LIS3DH
+
+static portBASE_TYPE esp32_deepsleep_command(int8_t *pcWriteBuffer, 	size_t xWriteBufferLen, const int8_t *pcCommandString)
+{
+	int8_t *parameter1_string;
+	portBASE_TYPE parameter_string_length;
+	int deep_sleep_sec;
+
+	/* Remove compile time warnings about unused parameters, and check the
+	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	write buffer length is adequate, so does not check for buffer overflows. */
+	(void) xWriteBufferLen;
+	configASSERT(pcWriteBuffer);
+
+	/* Obtain the parameter string. */
+	parameter1_string = (int8_t *) FreeRTOS_CLIGetParameter(
+									pcCommandString,		/* The command string itself. */
+									1,						/* Return the first parameter. */
+									&parameter_string_length	/* Store the parameter string length. */
+								);
+	*pcWriteBuffer = '\0';
+	deep_sleep_sec = atoi((char *)parameter1_string);
+    	printf("Enabling timer wakeup, %ds\n", deep_sleep_sec);
+    	esp_deep_sleep_enable_timer_wakeup(deep_sleep_sec * 1000000);
+
+	const int ext_wakeup_pin_1 = 25;
+	const uint64_t ext_wakeup_pin_1_mask = 1ULL << ext_wakeup_pin_1;
+	
+	Lis3dhIntr1Clean();
+
+	printf("Enabling EXT1 wakeup on pins GPIO%d\n", ext_wakeup_pin_1);
+	esp_deep_sleep_enable_ext1_wakeup(ext_wakeup_pin_1_mask /*| ext_wakeup_pin_2_mask */, ESP_EXT1_WAKEUP_ANY_HIGH);
+
+    	printf("Entering deep sleep\n");
+	vAppSetCurrentTime();
+	
+    	esp_deep_sleep_start();
+
+
+	return pdFALSE;
+
+}
+
+static portBASE_TYPE esp32_mainloop_command(int8_t *pcWriteBuffer, 	size_t xWriteBufferLen, const int8_t *pcCommandString)
+{
+	int8_t *parameter1_string;
+	portBASE_TYPE parameter_string_length;
+	AppMessage_t msg;   
+
+	/* Remove compile time warnings about unused parameters, and check the
+	write buffer is not NULL.  NOTE - for simplicity, this example assumes the
+	write buffer length is adequate, so does not check for buffer overflows. */
+	(void) xWriteBufferLen;
+	configASSERT(pcWriteBuffer);
+
+	/* Obtain the parameter string. */
+	parameter1_string = (int8_t *) FreeRTOS_CLIGetParameter(
+									pcCommandString,		/* The command string itself. */
+									1,						/* Return the first parameter. */
+									&parameter_string_length	/* Store the parameter string length. */
+								);
+	*pcWriteBuffer = '\0';
+
+	if (!strncmp((const char *)parameter1_string, "start", 5)) {
+
+		msg.cmd = APPMSG_MAIN_LOOP_START;
+		msg.app__doneCallback = AppOnDone;
+		AppMsgPut(&msg);
+
+		while (AppMsgGet(&msg) != pdFAIL) {
+			break;
+		}
+	}else
+	if (!strncmp((const char *)parameter1_string, "stop", 4)) {
+
+		msg.cmd = APPMSG_MAIN_LOOP_STOP;
+		msg.app__doneCallback = AppOnDone;
+		AppMsgPut(&msg);
+
+		while (AppMsgGet(&msg) != pdFAIL) {
+			break;
+		}
+	}
+	return pdFALSE;
+
+}
 

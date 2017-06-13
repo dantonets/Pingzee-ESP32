@@ -40,6 +40,11 @@
 #define LIS3DH_INT1_SRC               0x31
 #define LIS3DH_INT1_THS               0x32
 #define LIS3DH_INT1_DURATION          0x33
+#define LIS3DH_INT2_CFG               0x34
+#define LIS3DH_INT2_SRC               0x35
+#define LIS3DH_INT2_THS               0x36
+#define LIS3DH_INT2_DURATION     0x37
+
 
 #define LIS3DH_CLICK_CFG              0x38
 #define LIS3DH_CLICK_SRC              0x39
@@ -47,6 +52,9 @@
 #define LIS3DH_TIME_LIMIT             0x3B
 #define LIS3DH_TIME_LATENCY           0x3C
 #define LIS3DH_TIME_WINDOW            0x3D
+#define LIS3DH_ACT_THS              		0x3E
+#define LIS3DH_ACT_TIME_LIMIT         0x3F
+
 
 //This struct holds the settings the driver uses to do calculations
 typedef struct /* SensorSettings */
@@ -54,6 +62,8 @@ typedef struct /* SensorSettings */
 	//ADC and Temperature settings
 	uint8_t adcEnabled;
 	uint8_t tempEnabled;
+
+	
 
 	//Accelerometer settings
 	uint16_t accelSampleRate;  //Hz.  Can be: 0,1,10,25,50,100,200,400,1600,5000 Hz

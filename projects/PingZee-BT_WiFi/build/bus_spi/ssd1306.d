@@ -76,6 +76,9 @@ ssd1306.o: \
  /home/beam/Pingzee/Pingzee-ESP32/components/freertos/include/freertos/semphr.h \
  /home/beam/Pingzee/Pingzee-ESP32/components/freertos/include/freertos/queue.h \
  /home/beam/Pingzee/Pingzee-ESP32/projects/PingZee-BT_WiFi/components/application/include/app.h \
+ /home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/time.h \
+ /home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/machine/time.h \
+ /home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/sys/time.h \
  /home/beam/Pingzee/Pingzee-ESP32/projects/PingZee-BT_WiFi/components/application/include/board.h \
  /home/beam/Pingzee/Pingzee-ESP32/projects/PingZee-BT_WiFi/components/application/include/board.h \
  /home/beam/Pingzee/Pingzee-ESP32/projects/PingZee-BT_WiFi/components/bus_spi/include/ssd1306.h \
@@ -236,6 +239,12 @@ ssd1306.o: \
 /home/beam/Pingzee/Pingzee-ESP32/components/freertos/include/freertos/queue.h:
 
 /home/beam/Pingzee/Pingzee-ESP32/projects/PingZee-BT_WiFi/components/application/include/app.h:
+
+/home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/time.h:
+
+/home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/machine/time.h:
+
+/home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/sys/time.h:
 
 /home/beam/Pingzee/Pingzee-ESP32/projects/PingZee-BT_WiFi/components/application/include/board.h:
 

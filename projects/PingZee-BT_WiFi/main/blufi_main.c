@@ -15,6 +15,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
+#include <sys/time.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
@@ -22,6 +24,8 @@
 #include "esp_wifi.h"
 #include "esp_event_loop.h"
 #include "esp_log.h"
+#include "driver/rtc_io.h"
+#include "soc/rtc_cntl_reg.h"
 #include "nvs_flash.h"
 #include "bt.h"
 
@@ -313,6 +317,9 @@ static void gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param
 void app_main()
 {
     esp_err_t ret;
+    AppMessage_t dmsg;
+
+	vAppWakeup(psAppGetStatus());
 
 	vAppStart( 2048, 12);
 #ifdef CONFIG_USE_SERIAL_CONSOLE
@@ -328,6 +335,7 @@ void app_main()
 #ifdef CONFIG_LIS3DH
 	vLis3dhStart(2048, 12);
 #endif	
+	vAppTimersStart(2048, 12);
 
     nvs_flash_init();
     initialise_wifi();
@@ -367,4 +375,9 @@ void app_main()
 
     esp_blufi_register_callbacks(&blufi_callbacks);
     esp_blufi_profile_init();
+
+    dmsg.cmd = APPMSG_MAIN_LOOP_START;
+    dmsg.app__doneCallback = NULL;
+   AppMsgPut(&dmsg);
+	
 }

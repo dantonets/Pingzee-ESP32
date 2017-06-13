@@ -74,6 +74,9 @@ lis3dh.o: \
  /home/beam/Pingzee/Pingzee-ESP32/components/freertos/include/freertos/xtensa_api.h \
  /home/beam/Pingzee/Pingzee-ESP32/components/log/include/esp_log.h \
  /home/beam/Pingzee/Pingzee-ESP32/projects/PingZee-BT_WiFi/components/application/include/app.h \
+ /home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/time.h \
+ /home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/machine/time.h \
+ /home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/sys/time.h \
  /home/beam/Pingzee/Pingzee-ESP32/components/driver/include/driver/spi_master.h \
  /home/beam/Pingzee/Pingzee-ESP32/components/freertos/include/freertos/semphr.h \
  /home/beam/Pingzee/Pingzee-ESP32/components/freertos/include/freertos/queue.h \
@@ -228,6 +231,12 @@ lis3dh.o: \
 /home/beam/Pingzee/Pingzee-ESP32/components/log/include/esp_log.h:
 
 /home/beam/Pingzee/Pingzee-ESP32/projects/PingZee-BT_WiFi/components/application/include/app.h:
+
+/home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/time.h:
+
+/home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/machine/time.h:
+
+/home/beam/Pingzee/Pingzee-ESP32/components/newlib/include/sys/time.h:
 
 /home/beam/Pingzee/Pingzee-ESP32/components/driver/include/driver/spi_master.h:
 
